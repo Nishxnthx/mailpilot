@@ -1,0 +1,42 @@
+# dependencies
+/node_modules
+/.pnp
+.pnp.js
+
+# testing
+/coverage
+
+# next.js
+/.next/
+/out/
+
+# production
+/build
+
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# local env & local persistent session files
+.env*.local
+.env
+.gmail-sessions.json
+.sessions.json
+/.data/
+
+# vercel
+.vercel
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+
+# local Next.js build cache
+/.next-local/
+
+# Playwright test artifacts
+/test-results/
+
+# local Gmail watch state
+.gmail-watch.json

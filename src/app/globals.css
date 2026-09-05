@@ -1,0 +1,110 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: #020617;
+  --foreground: #f8fafc;
+  --sidebar-bg: #030712;
+  --sidebar-active: #1e293b;
+}
+
+body {
+  color: var(--foreground);
+  background: var(--background);
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+}
+
+/* Custom Outline-Only Checkbox (100% override of browser defaults) */
+.mp-checkbox {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  width: 0.95rem;
+  height: 0.95rem;
+  border-radius: 0.25rem;
+  border: 1.5px solid #64748b;
+  background-color: transparent !important;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease-in-out;
+  position: relative;
+  outline: none;
+  flex-shrink: 0;
+}
+
+.mp-checkbox:hover {
+  border-color: #cbd5e1;
+  background-color: rgba(255, 255, 255, 0.05) !important;
+}
+
+.mp-checkbox:checked {
+  background-color: #2563eb !important;
+  border-color: #3b82f6 !important;
+}
+
+.mp-checkbox:checked::after {
+  content: '';
+  width: 4px;
+  height: 7px;
+  border: solid white;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+  margin-bottom: 2px;
+}
+
+/* Custom subtle scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #334155;
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #475569;
+}
+
+/* Neutral Rich HTML Email Renderer Container (Gmail-like Neutral Sandbox) */
+.gmail-body-container {
+  background-color: #ffffff;
+  color: #222222;
+  border-radius: 0.5rem;
+  padding: 1.25rem;
+  border: 1px solid #e2e8f0;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.gmail-body-content {
+  color: #222222;
+  font-family: Arial, Helvetica, sans-serif, system-ui;
+  font-size: 14px;
+  line-height: 1.5;
+  overflow-wrap: break-word;
+  word-break: normal;
+}
+
+/* Preserve image responsiveness without overriding natural alignment or dimensions */
+.gmail-body-content img {
+  max-width: 100%;
+}
+
+/* Fallback link styling only when no custom inline colors exist */
+.gmail-body-content a:not([style*="color"]) {
+  color: #1a73e8;
+}
+
+/* Neutral table container */
+.gmail-body-content table {
+  max-width: 100%;
+}
