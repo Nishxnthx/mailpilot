@@ -14,11 +14,9 @@ import {
   Clock,
   Wrench,
   Compass,
-  Search,
-  Mail,
-  Edit3,
 } from 'lucide-react';
 import { useCopilotStore, StagedSendAction, TimelineStep } from '@/stores/useCopilotStore';
+import { useMailStore } from '@/stores/useMailStore';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -35,6 +33,10 @@ export const CopilotPanelPlaceholder: React.FC = () => {
   const stagedActionPreview = useCopilotStore((state) => state.stagedActionPreview);
   const confirmSendEmail = useCopilotStore((state) => state.confirmSendEmail);
   const cancelActionPreview = useCopilotStore((state) => state.cancelActionPreview);
+
+  const folderCounts = useMailStore((state) => state.folderCounts);
+  const emails = useMailStore((state) => state.emails);
+  const selectedEmail = useMailStore((state) => state.selectedEmail);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -55,19 +57,106 @@ export const CopilotPanelPlaceholder: React.FC = () => {
     sendMessage(text);
   };
 
+  // Dynamic Greeting based on local time
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return 'GOOD MORNING';
+    if (hour < 17) return 'GOOD AFTERNOON';
+    return 'GOOD EVENING';
+  };
+
+  // Real Mailbox Insight Counts from useMailStore
+  const inboxCountVal = folderCounts?.inbox?.threadsTotal ?? folderCounts?.inbox?.total ?? emails.length;
+  const priorityCountVal =
+    folderCounts?.categories?.primary?.threadsUnread ??
+    folderCounts?.categories?.primary?.unread ??
+    folderCounts?.inbox?.threadsUnread ??
+    0;
+
+  const inboxDisplayCount = typeof inboxCountVal === 'number' ? inboxCountVal.toLocaleString() : '0';
+  const priorityDisplayCount = typeof priorityCountVal === 'number' ? priorityCountVal.toLocaleString() : '0';
+
+  // Context-Aware AI Commands
+  const commands = selectedEmail
+    ? [
+        {
+          symbol: '✦',
+          accentColor: '#60a5fa',
+          title: 'Summarize this email',
+          subtitle: `Get key takeaways from "${selectedEmail.subject}"`,
+          prompt: `Summarize the email with subject "${selectedEmail.subject}"`,
+        },
+        {
+          symbol: '◉',
+          accentColor: '#34d399',
+          title: 'Find unread',
+          subtitle: 'Show emails that need attention',
+          prompt: 'Show unread emails in inbox',
+        },
+        {
+          symbol: '⌕',
+          accentColor: '#fbbf24',
+          title: 'Search my emails',
+          subtitle: 'Find anything using natural language',
+          prompt: 'Search my emails',
+        },
+        {
+          symbol: '↗',
+          accentColor: '#c084fc',
+          title: 'Draft a reply',
+          subtitle: `Create an AI reply to ${selectedEmail.from.name || selectedEmail.from.email}`,
+          prompt: `Draft a reply to ${selectedEmail.from.email}`,
+        },
+      ]
+    : [
+        {
+          symbol: '✦',
+          accentColor: '#60a5fa',
+          title: 'Summarize inbox',
+          subtitle: 'Get a quick overview of important emails',
+          prompt: 'Summarize the latest emails in inbox',
+        },
+        {
+          symbol: '◉',
+          accentColor: '#34d399',
+          title: 'Find unread',
+          subtitle: 'Show emails that need attention',
+          prompt: 'Show unread emails in inbox',
+        },
+        {
+          symbol: '⌕',
+          accentColor: '#fbbf24',
+          title: 'Search my emails',
+          subtitle: 'Find anything using natural language',
+          prompt: 'Search emails in inbox',
+        },
+        {
+          symbol: '↗',
+          accentColor: '#c084fc',
+          title: 'Draft a reply',
+          subtitle: 'Create a response with AI',
+          prompt: 'Compose an email',
+        },
+      ];
+
   const renderTimelineStep = (step: TimelineStep, idx: number) => {
+    if (
+      !step.label ||
+      step.label.startsWith('Tool selected:') ||
+      step.label.startsWith('Executing') ||
+      step.label.startsWith('Dispatched tool action') ||
+      step.label === 'Understanding request'
+    ) {
+      return null;
+    }
+
     return (
       <div key={idx} className="flex items-start gap-2 text-[11px] text-slate-400 py-0.5">
         <div className="pt-0.5 shrink-0">
-          {step.step === 'understanding' && <Clock className="h-3 w-3 text-blue-400" />}
-          {step.step === 'tool_selected' && <Wrench className="h-3 w-3 text-amber-400" />}
-          {step.step === 'execution' && <Loader2 className="h-3 w-3 animate-spin text-blue-400" />}
-          {step.step === 'result' && <CheckCircle2 className="h-3 w-3 text-emerald-400" />}
-          {step.step === 'action' && <Compass className="h-3 w-3 text-indigo-400" />}
+          <CheckCircle2 className="h-3 w-3 text-emerald-400" />
         </div>
         <div className="flex-1 min-w-0">
           <div className="font-medium text-slate-300 truncate">{step.label}</div>
-          {step.detail && <div className="text-[10px] text-slate-500 truncate">{step.detail}</div>}
         </div>
       </div>
     );
@@ -133,9 +222,11 @@ export const CopilotPanelPlaceholder: React.FC = () => {
     );
   };
 
+  const displayMessages = messages.filter((m) => m.id !== 'welcome');
+
   return (
-    <aside className="w-80 sm:w-96 border-l border-[#1b2230] bg-[#0e121c] flex flex-col justify-between select-none shrink-0">
-      {/* Header */}
+    <aside className="w-80 sm:w-96 border-l border-[#1b2230] bg-[#0e121c] flex flex-col justify-between select-none shrink-0 h-full">
+      {/* 1. COPILOT HEADER */}
       <div className="h-14 border-b border-[#1b2230] px-4 flex items-center justify-between bg-[#0e121c] select-none shrink-0">
         <div className="flex items-center gap-2.5">
           <div className="h-8 w-8 rounded-lg bg-blue-600/20 border border-blue-500/30 flex items-center justify-center">
@@ -159,9 +250,93 @@ export const CopilotPanelPlaceholder: React.FC = () => {
         </button>
       </div>
 
-      {/* Copilot Chat Body */}
-      <div className="flex-1 p-4 space-y-4 overflow-y-auto">
-        {messages.map((msg) => {
+      {/* 2. MAIN SCROLLABLE BODY */}
+      <div className="flex-1 p-4 space-y-4 overflow-y-auto min-h-0">
+        {/* AI COMMAND CENTER DASHBOARD */}
+        <div className="bg-slate-950/60 border border-slate-800/80 rounded-2xl p-3.5 space-y-3.5 shadow-inner">
+          {/* GREETING SECTION */}
+          <div className="flex items-start justify-between">
+            <div>
+              <div className="flex items-center gap-1.5 text-[10px] font-bold text-blue-400 uppercase tracking-widest">
+                <span>✦ {getGreeting()}</span>
+              </div>
+              <h3 className="text-sm font-bold text-slate-100 tracking-tight mt-0.5">
+                What should we do?
+              </h3>
+            </div>
+            <div className="h-6 w-6 rounded-md bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400 text-xs font-bold shrink-0">
+              ✦
+            </div>
+          </div>
+
+          {/* MAILBOX INSIGHT CARDS */}
+          <div className="grid grid-cols-2 gap-2">
+            {/* Card 1: INBOX */}
+            <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-2.5 flex flex-col justify-between hover:border-slate-700 transition-colors">
+              <div className="flex items-center justify-between text-[10px] font-bold text-blue-400">
+                <span className="flex items-center gap-1">✦ INBOX</span>
+              </div>
+              <div className="my-1">
+                <div className="text-base font-extrabold text-slate-100 tracking-tight">
+                  {inboxDisplayCount}
+                </div>
+                <div className="text-[10px] text-slate-400 font-medium">emails</div>
+              </div>
+            </div>
+
+            {/* Card 2: PRIORITY */}
+            <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-2.5 flex flex-col justify-between hover:border-slate-700 transition-colors">
+              <div className="flex items-center justify-between text-[10px] font-bold text-amber-400">
+                <span className="flex items-center gap-1">◉ PRIORITY</span>
+              </div>
+              <div className="my-1">
+                <div className="text-base font-extrabold text-slate-100 tracking-tight">
+                  {priorityDisplayCount}
+                </div>
+                <div className="text-[10px] text-slate-400 font-medium">need you</div>
+              </div>
+            </div>
+          </div>
+
+          {/* AI COMMANDS */}
+          <div className="space-y-2 pt-0.5">
+            <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-0.5">
+              AI Commands
+            </div>
+
+            <div className="space-y-1.5">
+              {commands.map((cmd, idx) => (
+                <button
+                  key={idx}
+                  type="button"
+                  onClick={() => handleQuickPrompt(cmd.prompt)}
+                  disabled={status === 'thinking' || status === 'executing'}
+                  className="w-full p-2.5 bg-slate-900/80 hover:bg-slate-800/90 border border-slate-800/90 hover:border-blue-500/40 rounded-xl flex items-center justify-between text-left transition-all duration-150 group disabled:opacity-50"
+                >
+                  <div className="flex items-start gap-2.5 min-w-0 pr-2">
+                    <span className="text-xs font-bold shrink-0 mt-0.5" style={{ color: cmd.accentColor }}>
+                      {cmd.symbol}
+                    </span>
+                    <div className="min-w-0">
+                      <div className="text-xs font-semibold text-slate-200 group-hover:text-white truncate">
+                        {cmd.title}
+                      </div>
+                      <div className="text-[10px] text-slate-400 group-hover:text-slate-300 truncate">
+                        {cmd.subtitle}
+                      </div>
+                    </div>
+                  </div>
+                  <span className="text-xs text-slate-500 group-hover:text-slate-200 group-hover:translate-x-0.5 transition-transform font-mono shrink-0">
+                    →
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* CHAT MESSAGES STREAM */}
+        {displayMessages.map((msg) => {
           const isUser = msg.role === 'user';
           return (
             <div
@@ -205,59 +380,49 @@ export const CopilotPanelPlaceholder: React.FC = () => {
         })}
 
         {/* Global Active Action Preview */}
-        {stagedActionPreview && !messages.some((m) => m.actionPreview === stagedActionPreview) && (
+        {stagedActionPreview && !displayMessages.some((m) => m.actionPreview === stagedActionPreview) && (
           renderActionPreviewCard(stagedActionPreview)
         )}
 
-        {/* Loading Indicator */}
+        {/* Loading Indicator inside chat stream */}
         {(status === 'thinking' || status === 'executing') && (
           <div className="flex items-center gap-2 p-3 bg-slate-900 border border-slate-800 rounded-2xl text-xs text-slate-400">
             <Loader2 className="h-4 w-4 animate-spin text-blue-400" />
-            <span>
-              {status === 'thinking' ? 'OpenRouter reasoning & tool calling...' : 'Executing operation...'}
-            </span>
+            <span>MailPilot is working...</span>
           </div>
         )}
 
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Suggested Quick Action Chips */}
-      <div className="px-3 py-2 bg-slate-950 border-t border-slate-850 space-y-1.5 shrink-0">
-        <div className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider px-1">
-          Suggested Actions
+      {/* 3. AI STATUS ROW */}
+      <div className="px-4 py-2 bg-slate-950 border-t border-slate-800/80 flex items-center justify-between text-[11px] text-slate-400 select-none shrink-0">
+        <div className="flex items-center gap-2 font-medium">
+          {status === 'idle' && (
+            <>
+              <span className="h-2 w-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)]" />
+              <span className="text-slate-300 font-semibold tracking-wide">✓ READY</span>
+            </>
+          )}
+          {(status === 'thinking' || status === 'executing') && (
+            <>
+              <Loader2 className="h-3 w-3 animate-spin text-blue-400" />
+              <span className="text-blue-400 font-semibold tracking-wide">● WORKING...</span>
+            </>
+          )}
+          {status === 'error' && (
+            <>
+              <span className="h-2 w-2 rounded-full bg-red-500" />
+              <span className="text-red-400 font-semibold tracking-wide">⚠ ERROR</span>
+            </>
+          )}
         </div>
-        <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none pb-1">
-          <button
-            type="button"
-            onClick={() => handleQuickPrompt('Summarize the latest emails in inbox')}
-            className="py-1 px-2.5 rounded-full bg-slate-900 hover:bg-slate-800 border border-slate-800 text-[11px] text-slate-300 transition-colors whitespace-nowrap shrink-0 flex items-center gap-1"
-          >
-            <Sparkles className="h-3 w-3 text-blue-400" />
-            <span>Summarize inbox</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => handleQuickPrompt('Show unread emails in inbox')}
-            className="py-1 px-2.5 rounded-full bg-slate-900 hover:bg-slate-800 border border-slate-800 text-[11px] text-slate-300 transition-colors whitespace-nowrap shrink-0 flex items-center gap-1"
-          >
-            <Mail className="h-3 w-3 text-emerald-400" />
-            <span>Show unread</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => handleQuickPrompt('Search emails from recruiter')}
-            className="py-1 px-2.5 rounded-full bg-slate-900 hover:bg-slate-800 border border-slate-800 text-[11px] text-slate-300 transition-colors whitespace-nowrap shrink-0 flex items-center gap-1"
-          >
-            <Search className="h-3 w-3 text-amber-400" />
-            <span>Find emails</span>
-          </button>
-        </div>
+        <span className="text-[10px] text-slate-500 font-mono uppercase tracking-wider">
+          {status === 'idle' ? 'READY' : 'WORKING'}
+        </span>
       </div>
 
-      {/* Input Prompt Footer */}
+      {/* 4. INPUT PROMPT & FOOTER */}
       <div className="p-3 border-t border-slate-800 bg-slate-950 shrink-0">
         <form onSubmit={handleSubmit} className="space-y-2">
           <div className="relative">
@@ -267,7 +432,7 @@ export const CopilotPanelPlaceholder: React.FC = () => {
               value={promptInput}
               onChange={(e) => setPromptInput(e.target.value)}
               disabled={status === 'thinking' || status === 'executing'}
-              className="pr-10 bg-slate-900 text-xs border-slate-800 focus:border-blue-500/60 rounded-xl h-9 text-slate-100"
+              className="pr-10 bg-slate-900 text-xs border-slate-800 focus:border-blue-500/60 rounded-xl h-9 text-slate-100 placeholder:text-slate-500"
             />
             <button
               type="submit"

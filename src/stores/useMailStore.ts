@@ -35,6 +35,7 @@ interface MailState {
 
   // Controlled Compose State
   isComposeOpen: boolean;
+  isTyping: boolean;
   composeDraft: EmailDraft;
 
   // Actions
@@ -70,6 +71,7 @@ interface MailState {
   closeCompose: () => void;
   updateComposeDraft: (fields: Partial<EmailDraft>) => void;
   resetComposeDraft: () => void;
+  animateComposeFill: (targetDraft: Partial<EmailDraft>, speedMs?: number) => Promise<void>;
 }
 
 const initialDraft: EmailDraft = {
@@ -96,9 +98,14 @@ const mailboxCacheMap = new Map<string, CacheEntry>();
 const CACHE_TTL_MS = 60000; // 60-second TTL
 const pendingFetchesMap = new Map<string, Promise<void>>();
 let searchDebounceTimer: NodeJS.Timeout | null = null;
+let currentAnimationId = 0;
 
 export function clearMailboxCache() {
   mailboxCacheMap.clear();
+}
+
+export function cancelComposeAnimation() {
+  currentAnimationId++;
 }
 
 export function hasOtherUnreadMessagesInThread(
@@ -258,6 +265,7 @@ export const useMailStore = create<MailState>((set, get) => ({
   error: null,
 
   isComposeOpen: false,
+  isTyping: false,
   composeDraft: initialDraft,
 
   setActiveFolder: (folder) => {
@@ -512,7 +520,37 @@ export const useMailStore = create<MailState>((set, get) => ({
       const res = await fetch(`/api/mail/thread/${threadId}`, { cache: 'no-store' });
       if (res.ok) {
         const threadData: EmailThread = await res.json();
-        set({ activeThread: threadData, isLoadingThread: false });
+        if (Array.isArray(threadData.messages)) {
+          threadData.messages.sort((a, b) => a.internalDate - b.internalDate);
+        }
+        set((state) => {
+          const updatedEmails = state.emails.map((e) => {
+            if (e.threadId === threadId || e.id === threadId) {
+              return {
+                ...e,
+                threadMessagesCount: threadData.messages.length,
+                snippet: threadData.snippet || e.snippet,
+              };
+            }
+            return e;
+          });
+
+          const updatedSelected =
+            state.selectedEmail && (state.selectedEmail.threadId === threadId || state.selectedEmail.id === threadId)
+              ? {
+                  ...state.selectedEmail,
+                  threadMessagesCount: threadData.messages.length,
+                  snippet: threadData.snippet || state.selectedEmail.snippet,
+                }
+              : state.selectedEmail;
+
+          return {
+            activeThread: threadData,
+            emails: updatedEmails,
+            selectedEmail: updatedSelected,
+            isLoadingThread: false,
+          };
+        });
       } else {
         set({ isLoadingThread: false });
       }
@@ -830,23 +868,104 @@ export const useMailStore = create<MailState>((set, get) => ({
     set({ syncStatus: 'idle' });
   },
 
-  openCompose: (initialData) =>
+  openCompose: (initialData) => {
+    cancelComposeAnimation();
     set((state) => ({
       isComposeOpen: true,
+      isTyping: false,
       composeDraft: initialData
         ? { ...state.composeDraft, ...initialData }
         : state.composeDraft,
-    })),
+    }));
+  },
 
-  closeCompose: () =>
-    set({ isComposeOpen: false }),
+  closeCompose: () => {
+    cancelComposeAnimation();
+    set({ isComposeOpen: false, isTyping: false });
+  },
 
   updateComposeDraft: (fields) =>
     set((state) => ({
       composeDraft: { ...state.composeDraft, ...fields },
     })),
 
-  resetComposeDraft: () =>
-    set({ composeDraft: initialDraft, isComposeOpen: false }),
+  resetComposeDraft: () => {
+    cancelComposeAnimation();
+    set({ composeDraft: initialDraft, isComposeOpen: false, isTyping: false });
+  },
+
+  animateComposeFill: async (targetDraft: Partial<EmailDraft>, speedMs = 15) => {
+    cancelComposeAnimation();
+    const animId = currentAnimationId;
+
+    const targetTo = targetDraft.to || '';
+    const targetSubject = targetDraft.subject || '';
+    const targetBody = targetDraft.body || '';
+
+    // Open compose modal with target metadata (threadId, inReplyTo, references, draftId, etc.) and empty text fields
+    set((state) => ({
+      isComposeOpen: true,
+      isTyping: true,
+      composeDraft: {
+        ...state.composeDraft,
+        ...targetDraft,
+        to: '',
+        subject: '',
+        body: '',
+      },
+    }));
+
+    const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+    // 1. Type recipient 'to'
+    for (let i = 1; i <= targetTo.length; i++) {
+      if (currentAnimationId !== animId) {
+        set({ isTyping: false });
+        return;
+      }
+      set((state) => ({
+        composeDraft: { ...state.composeDraft, to: targetTo.slice(0, i) },
+      }));
+      if (speedMs > 0) await delay(speedMs);
+    }
+
+    // 2. Type 'subject'
+    for (let i = 1; i <= targetSubject.length; i++) {
+      if (currentAnimationId !== animId) {
+        set({ isTyping: false });
+        return;
+      }
+      set((state) => ({
+        composeDraft: { ...state.composeDraft, subject: targetSubject.slice(0, i) },
+      }));
+      if (speedMs > 0) await delay(speedMs);
+    }
+
+    // 3. Type 'body'
+    for (let i = 1; i <= targetBody.length; i++) {
+      if (currentAnimationId !== animId) {
+        set({ isTyping: false });
+        return;
+      }
+      set((state) => ({
+        composeDraft: { ...state.composeDraft, body: targetBody.slice(0, i) },
+      }));
+      if (speedMs > 0) await delay(speedMs);
+    }
+
+    if (currentAnimationId === animId) {
+      set((state) => ({
+        isTyping: false,
+        composeDraft: {
+          ...state.composeDraft,
+          to: targetTo,
+          subject: targetSubject,
+          body: targetBody,
+        },
+      }));
+    } else {
+      set({ isTyping: false });
+    }
+  },
 }));
 

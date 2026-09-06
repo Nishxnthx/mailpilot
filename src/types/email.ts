@@ -39,6 +39,7 @@ export interface Email {
   folder: EmailFolder;
   labels: string[];
   attachments?: EmailAttachment[];
+  threadMessagesCount?: number;
 }
 
 export interface EmailThread {

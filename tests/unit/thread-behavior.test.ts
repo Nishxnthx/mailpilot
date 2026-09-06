@@ -15,7 +15,7 @@ export function normalizeThread(threadId: string, rawMessages: Email[]): EmailTh
   };
 }
 
-describe('Thread Conversation Behavior', () => {
+describe('Thread Conversation & Multiple Forward Synchronization', () => {
   beforeEach(() => {
     clearMailboxCache();
     useMailStore.setState({
@@ -208,5 +208,131 @@ describe('Thread Conversation Behavior', () => {
     expect(activeThread?.messages[0].id).toBe('m-orig');
     expect(activeThread?.messages[1].id).toBe('m-reply');
     expect(activeThread?.messages[1].threadId).toBe(threadId);
+  });
+
+  it('handles multiple forwards sequentially, refetching Gmail thread each time (Original -> Fwd 1 -> Fwd 2 = 3 messages)', async () => {
+    const threadId = 'thread-multi-fwd';
+    
+    const msgOrig: Email = {
+      id: 'm-1',
+      threadId,
+      subject: 'Hiring Update',
+      snippet: 'Candidate details attached',
+      from: { email: 'hr@company.com' },
+      to: [{ email: 'me@company.com' }],
+      date: '2026-09-05T08:00:00Z',
+      internalDate: 1700000000000,
+      isRead: true,
+      isStarred: false,
+      folder: 'inbox',
+      labels: ['INBOX'],
+    };
+
+    const msgFwd1: Email = {
+      id: 'm-2',
+      threadId,
+      subject: 'Fwd: Hiring Update',
+      snippet: 'FYI hiring update',
+      from: { email: 'me@company.com' },
+      to: [{ email: 'team1@company.com' }],
+      date: '2026-09-05T08:10:00Z',
+      internalDate: 1700000600000,
+      isRead: true,
+      isStarred: false,
+      folder: 'sent',
+      labels: ['SENT'],
+    };
+
+    const msgFwd2: Email = {
+      id: 'm-3',
+      threadId,
+      subject: 'Fwd: Hiring Update',
+      snippet: 'Another forward to manager',
+      from: { email: 'me@company.com' },
+      to: [{ email: 'manager@company.com' }],
+      date: '2026-09-05T08:20:00Z',
+      internalDate: 1700001200000,
+      isRead: true,
+      isStarred: false,
+      folder: 'sent',
+      labels: ['SENT'],
+    };
+
+    // Step 1: Thread has 1 message
+    let currentThread: EmailThread = {
+      threadId,
+      subject: 'Hiring Update',
+      snippet: 'Candidate details attached',
+      messages: [msgOrig],
+    };
+
+    useMailStore.setState({ activeThread: currentThread });
+
+    const fetchMock = vi.fn().mockImplementation((url: string) => {
+      if (url.includes(`/api/mail/thread/${threadId}`)) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: async () => currentThread,
+        });
+      }
+      return Promise.reject(new Error(`Unexpected url: ${url}`));
+    });
+    global.fetch = fetchMock as unknown as typeof fetch;
+
+    // Step 2: First Forward sent, thread updated to 2 messages
+    currentThread = {
+      ...currentThread,
+      messages: [msgOrig, msgFwd1],
+    };
+    await useMailStore.getState().fetchEmailThread(threadId);
+    expect(useMailStore.getState().activeThread?.messages).toHaveLength(2);
+
+    // Step 3: Second Forward sent, thread updated to 3 messages
+    currentThread = {
+      ...currentThread,
+      messages: [msgOrig, msgFwd1, msgFwd2],
+    };
+    await useMailStore.getState().fetchEmailThread(threadId);
+
+    const finalThread = useMailStore.getState().activeThread;
+    expect(finalThread?.messages).toHaveLength(3);
+    expect(finalThread?.messages[0].id).toBe('m-1');
+    expect(finalThread?.messages[1].id).toBe('m-2');
+    expect(finalThread?.messages[2].id).toBe('m-3');
+    // Ensure chronological order
+    expect(finalThread!.messages[0].internalDate).toBeLessThan(finalThread!.messages[1].internalDate);
+    expect(finalThread!.messages[1].internalDate).toBeLessThan(finalThread!.messages[2].internalDate);
+  });
+
+  it('realtime update on open thread replaces activeThread with fresh thread without duplication', async () => {
+    const threadId = 'thread-realtime-test';
+    const msg1: Email = { id: 'm-1', threadId, subject: 'S', snippet: 'A', from: { email: 'a@b.com' }, to: [], date: '2026', internalDate: 100, isRead: true, isStarred: false, folder: 'inbox', labels: [] };
+    const msg2: Email = { id: 'm-2', threadId, subject: 'S', snippet: 'B', from: { email: 'b@c.com' }, to: [], date: '2026', internalDate: 200, isRead: true, isStarred: false, folder: 'inbox', labels: [] };
+
+    useMailStore.setState({
+      activeThread: { threadId, subject: 'S', snippet: 'A', messages: [msg1] },
+      selectedEmail: msg1,
+    });
+
+    const fetchMock = vi.fn().mockImplementation((url: string) => {
+      if (url.includes(`/api/mail/thread/${threadId}`)) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: async () => ({ threadId, subject: 'S', snippet: 'B', messages: [msg1, msg2] }),
+        });
+      }
+      return Promise.resolve({ ok: true, status: 200, json: async () => ({ emails: [], counts: {} }) });
+    });
+    global.fetch = fetchMock as unknown as typeof fetch;
+
+    await useMailStore.getState().handleRealtimeGmailUpdate({ historyId: '123' });
+
+    const activeThread = useMailStore.getState().activeThread;
+    expect(activeThread?.messages).toHaveLength(2);
+    // Ensure no duplicate IDs exist
+    const ids = activeThread?.messages.map((m) => m.id);
+    expect(new Set(ids).size).toBe(2);
   });
 });

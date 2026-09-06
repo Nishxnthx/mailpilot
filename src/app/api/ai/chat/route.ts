@@ -153,8 +153,7 @@ CRITICAL UI CONTROL & SEARCH INSTRUCTIONS:
         finalReplyText = assistantMessage.content || 'Action processed successfully.';
         timeline.push({
           step: 'result',
-          label: 'Response generated',
-          detail: finalReplyText.substring(0, 60),
+          label: 'Done',
           timestamp: new Date().toISOString(),
         });
         break;
@@ -179,10 +178,35 @@ CRITICAL UI CONTROL & SEARCH INSTRUCTIONS:
           rawArgs = {};
         }
 
+        let userFriendlyLabel = 'Processing request...';
+        let userFriendlyDetail: string | undefined = undefined;
+
+        if (functionName === 'search_emails') {
+          userFriendlyLabel = 'Checking your inbox...';
+          userFriendlyDetail = 'Finding matching emails';
+        } else if (functionName === 'get_email_detail' || functionName === 'summarize_email') {
+          userFriendlyLabel = 'Reading conversation...';
+          userFriendlyDetail = 'Extracting message details';
+        } else if (functionName === 'open_email') {
+          userFriendlyLabel = 'Opening conversation...';
+        } else if (functionName === 'navigate_mailbox') {
+          userFriendlyLabel = 'Opening mailbox view...';
+        } else if (functionName === 'filter_emails') {
+          userFriendlyLabel = 'Filtering emails...';
+        } else if (functionName === 'prepare_compose') {
+          userFriendlyLabel = 'Creating your email...';
+        } else if (functionName === 'prepare_reply') {
+          userFriendlyLabel = 'Drafting your reply...';
+        } else if (functionName === 'prepare_forward') {
+          userFriendlyLabel = 'Preparing forwarded message...';
+        } else if (functionName === 'prepare_send' || functionName === 'send_email') {
+          userFriendlyLabel = 'Preparing email to send...';
+        }
+
         timeline.push({
           step: 'tool_selected',
-          label: `Tool selected: ${functionName}`,
-          detail: `Arguments: ${JSON.stringify(rawArgs)}`,
+          label: userFriendlyLabel,
+          detail: userFriendlyDetail,
           timestamp: new Date().toISOString(),
         });
 
@@ -191,12 +215,6 @@ CRITICAL UI CONTROL & SEARCH INSTRUCTIONS:
         // Execute server data tools or stage UI actions
         if (functionName === 'search_emails') {
           const validArgs = toolSchemas.search_emails.parse(rawArgs);
-          timeline.push({
-            step: 'execution',
-            label: `Executing search_emails server-side`,
-            detail: `Query: "${validArgs.query}"`,
-            timestamp: new Date().toISOString(),
-          });
           const searchRes = await fetchMailList({ query: validArgs.query, folder: (validArgs.folder as any) || undefined });
           toolResultData = {
             emailsCount: searchRes.emails.length,
@@ -213,12 +231,6 @@ CRITICAL UI CONTROL & SEARCH INSTRUCTIONS:
         } else if (functionName === 'get_email_detail' || functionName === 'summarize_email') {
           const validArgs = toolSchemas.get_email_detail.parse({
             emailId: rawArgs.emailId || context?.selectedEmailId || (context?.visibleEmails?.[0]?.id ?? ''),
-          });
-          timeline.push({
-            step: 'execution',
-            label: `Fetching email detail server-side`,
-            detail: `ID: ${validArgs.emailId}`,
-            timestamp: new Date().toISOString(),
           });
           let emailDetail: Record<string, unknown> = {};
           if (validArgs.emailId) {
@@ -294,12 +306,6 @@ CRITICAL UI CONTROL & SEARCH INSTRUCTIONS:
           actionPreview = validArgs;
           uiActions.push({ type: 'prepare_send', payload: validArgs });
         }
-
-        timeline.push({
-          step: 'action',
-          label: `Dispatched tool action: ${functionName}`,
-          timestamp: new Date().toISOString(),
-        });
 
         // Append tool result message to conversation history for OpenRouter
         conversationMessages.push({

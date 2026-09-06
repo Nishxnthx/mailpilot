@@ -103,7 +103,7 @@ export const EmailDetailViewer: React.FC = () => {
       to: '',
       subject: fwdSubject,
       body: `${fwdHeader}${rawBody}`,
-      threadId: undefined,
+      threadId: msg.threadId,
       inReplyTo: undefined,
       references: undefined,
     });

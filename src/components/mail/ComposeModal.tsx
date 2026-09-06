@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 
 export const ComposeModal: React.FC = () => {
   const isComposeOpen = useMailStore((state) => state.isComposeOpen);
+  const isTyping = useMailStore((state) => state.isTyping);
   const composeDraft = useMailStore((state) => state.composeDraft);
   const updateComposeDraft = useMailStore((state) => state.updateComposeDraft);
   const closeCompose = useMailStore((state) => state.closeCompose);
@@ -32,9 +33,9 @@ export const ComposeModal: React.FC = () => {
     }
   }, [isComposeOpen, composeDraft.draftId]);
 
-  // Debounced Autosave (1000ms)
+  // Debounced Autosave (1000ms) - Suspended while AI character typing is active
   React.useEffect(() => {
-    if (!isComposeOpen || isSendingRef.current) return;
+    if (!isComposeOpen || isSendingRef.current || isTyping) return;
 
     const { to, cc, bcc, subject, body } = composeDraft;
     const hasMeaningfulContent =
@@ -103,6 +104,7 @@ export const ComposeModal: React.FC = () => {
     };
   }, [
     isComposeOpen,
+    isTyping,
     composeDraft,
     updateComposeDraft,
   ]);
@@ -139,11 +141,12 @@ export const ComposeModal: React.FC = () => {
 
       resetComposeDraft();
       closeCompose();
-      await syncMail();
 
       if (sentThreadId) {
         await useMailStore.getState().fetchEmailThread(sentThreadId);
       }
+
+      await syncMail();
     } catch (err) {
       isSendingRef.current = false;
       const message = err instanceof Error ? err.message : 'Failed to send email';
@@ -163,19 +166,25 @@ export const ComposeModal: React.FC = () => {
             <span>{composeDraft.draftId ? 'Edit Draft' : 'New Message'}</span>
           </div>
 
-          {/* Autosave Status Indicator */}
-          {saveStatus === 'saving' && (
+          {/* Autosave & AI Typing Status Indicator */}
+          {isTyping && (
+            <div className="flex items-center gap-1 text-[11px] text-blue-400 font-medium bg-blue-950/40 px-2 py-0.5 rounded border border-blue-800/40 animate-pulse">
+              <Sparkles className="h-3 w-3 text-amber-400" />
+              <span>AI Typing...</span>
+            </div>
+          )}
+          {!isTyping && saveStatus === 'saving' && (
             <div className="flex items-center gap-1 text-[11px] text-amber-400 font-medium bg-amber-950/40 px-2 py-0.5 rounded border border-amber-800/40">
               <Loader2 className="h-3 w-3 animate-spin" />
               <span>Saving...</span>
             </div>
           )}
-          {saveStatus === 'saved' && (
+          {!isTyping && saveStatus === 'saved' && (
             <div className="flex items-center gap-1 text-[11px] text-emerald-400 font-medium bg-emerald-950/40 px-2 py-0.5 rounded border border-emerald-800/40">
               <span>Saved</span>
             </div>
           )}
-          {saveStatus === 'error' && (
+          {!isTyping && saveStatus === 'error' && (
             <div className="flex items-center gap-1 text-[11px] text-red-400 font-medium bg-red-950/40 px-2 py-0.5 rounded border border-red-800/40">
               <span>Save failed</span>
             </div>

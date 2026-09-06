@@ -21,6 +21,8 @@ export const EmailList: React.FC = () => {
   const activeFolder = useMailStore((state) => state.activeFolder);
   const openCompose = useMailStore((state) => state.openCompose);
 
+  const activeThread = useMailStore((state) => state.activeThread);
+
   const filteredEmails = emails.filter((email) => {
     if (readFilter === 'unread') return !email.isRead;
     if (readFilter === 'read') return email.isRead;
@@ -128,10 +130,22 @@ export const EmailList: React.FC = () => {
               </div>
 
               {/* Sender */}
-              <div className="w-36 sm:w-44 shrink-0 truncate">
+              <div className="w-36 sm:w-44 shrink-0 truncate flex items-center gap-1.5">
                 <span className={cn(isUnread ? 'text-white font-bold' : 'text-slate-300 font-normal')}>
                   {senderName}
                 </span>
+                {(() => {
+                  const threadCount =
+                    activeThread && (activeThread.threadId === email.threadId || activeThread.threadId === email.id)
+                      ? activeThread.messages.length
+                      : email.threadMessagesCount || 1;
+                  if (threadCount <= 1) return null;
+                  return (
+                    <span className="text-[10px] bg-slate-800 text-blue-400 font-semibold px-1.5 py-0.2 rounded-full border border-slate-700">
+                      {threadCount}
+                    </span>
+                  );
+                })()}
               </div>
 
               {/* Subject & Snippet Inline */}

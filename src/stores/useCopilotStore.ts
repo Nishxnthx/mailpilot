@@ -153,10 +153,10 @@ export const useCopilotStore = create<CopilotStoreState>((set, get) => ({
         } else if (action.type === 'open_email') {
           mailState.setSelectedEmailId(action.payload.emailId);
         } else if (action.type === 'prepare_compose') {
-          mailState.openCompose(action.payload);
+          await mailState.animateComposeFill(action.payload);
         } else if (action.type === 'prepare_reply') {
           const selected = mailState.selectedEmail;
-          mailState.openCompose({
+          await mailState.animateComposeFill({
             to: action.payload.to || selected?.from.email || '',
             subject: action.payload.subject || (selected ? `Re: ${selected.subject}` : ''),
             body: action.payload.body || '',
@@ -165,7 +165,7 @@ export const useCopilotStore = create<CopilotStoreState>((set, get) => ({
             references: action.payload.references || selected?.messageId || selected?.id || undefined,
           });
         } else if (action.type === 'prepare_forward') {
-          mailState.openCompose({
+          await mailState.animateComposeFill({
             to: action.payload.to || '',
             subject: action.payload.subject || (mailState.selectedEmail ? `Fwd: ${mailState.selectedEmail.subject}` : ''),
             body: action.payload.body || '',
