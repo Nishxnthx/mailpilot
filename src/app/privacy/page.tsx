@@ -65,7 +65,21 @@ export default function PrivacyPolicyPage() {
             <span className="text-blue-400 font-mono">2.</span> Information We Access & Process
           </h2>
           <p className="text-sm text-slate-300 leading-relaxed">
-            To provide email operations and AI assistant capabilities, MailPilot requests access to specific Google user data through standard Gmail API scopes (`gmail.readonly`, `gmail.compose`):
+            To provide email operations and AI assistant capabilities, MailPilot requests access to specific Google user data through standard Gmail API scopes:
+          </p>
+          <ul className="space-y-2 text-sm text-slate-300 list-disc list-inside pl-2 leading-relaxed">
+            <li>
+              <code className="text-xs bg-slate-900 px-1.5 py-0.5 rounded text-blue-300">https://www.googleapis.com/auth/gmail.readonly</code>: Reading email headers, snippets, body content, labels, and thread metadata to render your mailbox.
+            </li>
+            <li>
+              <code className="text-xs bg-slate-900 px-1.5 py-0.5 rounded text-blue-300">https://www.googleapis.com/auth/gmail.compose</code>: Creating, updating, and drafting email messages.
+            </li>
+            <li>
+              <code className="text-xs bg-slate-900 px-1.5 py-0.5 rounded text-blue-300">https://www.googleapis.com/auth/gmail.modify</code>: Performing mailbox state operations such as read/unread changes and other permitted Gmail modifications required by MailPilot.
+            </li>
+          </ul>
+          <p className="text-sm text-slate-300 leading-relaxed pt-1">
+            Data accessed across these authorized scopes includes:
           </p>
           <ul className="space-y-2 text-sm text-slate-300 list-disc list-inside pl-2 leading-relaxed">
             <li>
@@ -75,10 +89,10 @@ export default function PrivacyPolicyPage() {
               <strong className="text-slate-100">Email Messages & Metadata:</strong> Message headers (From, To, Cc, Bcc, Subject, Date, Message-ID), snippet previews, labels, folder assignments, and message body content (HTML and plain text) required to display emails, render detail views, and build conversation threads.
             </li>
             <li>
-              <strong className="text-slate-100">OAuth Credentials:</strong> Access tokens and refresh tokens issued by Google OAuth 2.0 to authorize API calls on your behalf.
+              <strong className="text-slate-100">OAuth Credentials:</strong> Access tokens and refresh tokens handled server-side to authorize API calls on your behalf.
             </li>
             <li>
-              <strong className="text-slate-100">AI Prompt Prompts & Context:</strong> Natural language text prompts submitted to the AI Copilot and relevant email context required to fulfill AI features (such as summarization, searching, or drafting replies).
+              <strong className="text-slate-100">AI Prompts & Context:</strong> Natural language text prompts submitted to the AI Copilot and relevant email context required to fulfill AI features (such as summarization, searching, or drafting replies).
             </li>
           </ul>
         </section>
@@ -173,13 +187,13 @@ export default function PrivacyPolicyPage() {
           </p>
           <ul className="space-y-2 text-sm text-slate-300 list-disc list-inside pl-2 leading-relaxed">
             <li>
-              OAuth access and refresh tokens are stored securely in server-side session stores and are never exposed directly to the browser client.
+              OAuth access tokens are handled server-side and are never exposed directly to client-side JavaScript.
             </li>
             <li>
-              Client sessions are identified using encrypted, HTTP-only session cookies protected with `SameSite=Lax` and `Secure` attributes in production environments.
+              The browser receives an opaque session identifier through an HttpOnly cookie protected with <code className="text-xs bg-slate-900 px-1 py-0.5 rounded text-blue-300">SameSite=Lax</code> and <code className="text-xs bg-slate-900 px-1 py-0.5 rounded text-blue-300">Secure</code> attributes in production environments.
             </li>
             <li>
-              Email HTML bodies are sanitized using DOMPurify (`DOMPurify.sanitize`) to prevent cross-site scripting (XSS) attacks before rendering.
+              Email HTML bodies are sanitized using DOMPurify (<code className="text-xs bg-slate-900 px-1 py-0.5 rounded text-blue-300">DOMPurify.sanitize</code>) to prevent cross-site scripting (XSS) attacks before rendering.
             </li>
           </ul>
         </section>
