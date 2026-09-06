@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect } from 'react';
+import Link from 'next/link';
 import {
   Plus,
   Inbox,
@@ -228,10 +229,19 @@ export const Sidebar: React.FC = () => {
       </div>
 
       {/* Footer Info */}
-      <div className="pt-4 border-t border-slate-850 text-xs text-slate-500">
+      <div className="pt-4 border-t border-slate-850 text-xs text-slate-500 space-y-1.5">
         <p className="text-[10px] text-center leading-relaxed">
           MailPilot AI • Real Gmail Data
         </p>
+        <div className="flex items-center justify-center gap-2 text-[10px] text-slate-400">
+          <Link href="/privacy" className="hover:text-blue-400 underline transition-colors">
+            Privacy Policy
+          </Link>
+          <span>•</span>
+          <Link href="/terms" className="hover:text-blue-400 underline transition-colors">
+            Terms of Service
+          </Link>
+        </div>
       </div>
     </aside>
   );
