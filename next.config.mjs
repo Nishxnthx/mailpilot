@@ -1,6 +1,5 @@
 /** @type {import('next').NextConfig} */
-const nextConfig = {
-  distDir: '.next-local',
-};
+const nextConfig = {};
 
 export default nextConfig;
+
