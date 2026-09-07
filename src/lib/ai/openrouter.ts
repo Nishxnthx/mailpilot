@@ -37,6 +37,7 @@ export const toolSchemas = {
   }),
   prepare_forward: z.object({
     emailId: z.string().optional().describe('ID of the email to forward'),
+    to: z.string().optional().describe('Target recipient email address or display name to forward to'),
     subject: z.string().optional().describe('Forward subject line'),
     body: z.string().optional().describe('Forward body text'),
   }),
@@ -173,11 +174,12 @@ export const mailPilotOpenRouterTools = [
     type: 'function' as const,
     function: {
       name: 'prepare_forward',
-      description: 'Open forward composer for an email with subject and body text.',
+      description: 'Open forward composer for an email with target recipient, subject, and body text.',
       parameters: {
         type: 'object',
         properties: {
           emailId: { type: 'string', description: 'ID of the target email' },
+          to: { type: 'string', description: 'Target recipient email address or display name to forward to' },
           subject: { type: 'string', description: 'Forward subject line' },
           body: { type: 'string', description: 'Forward body text' },
         },

@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { useMailStore } from './useMailStore';
+import { formatForwardBody } from '@/lib/utils/utils';
 
 export interface TimelineStep {
   step: 'understanding' | 'tool_selected' | 'execution' | 'result' | 'action';
@@ -191,11 +192,22 @@ export const useCopilotStore = create<CopilotStoreState>((set, get) => ({
             }
           }
           const selected = useMailStore.getState().selectedEmail;
-          const fwdSubject = action.payload.subject || (selected ? (/^fwd:\s*/i.test(selected.subject) ? selected.subject : `Fwd: ${selected.subject}`) : '');
+          const fwdSubject = (action.payload.subject as string) || (selected ? (/^fwd:\s*/i.test(selected.subject) ? selected.subject : `Fwd: ${selected.subject}`) : '');
+          
+          let fwdBody = (action.payload.body as string) || '';
+          if (selected) {
+            const formattedFwd = formatForwardBody(selected);
+            if (!fwdBody) {
+              fwdBody = formattedFwd.trimStart();
+            } else if (!fwdBody.includes('Forwarded message')) {
+              fwdBody = `${fwdBody}\n\n${formattedFwd.trimStart()}`;
+            }
+          }
+
           await mailState.animateComposeFill({
-            to: action.payload.to || '',
+            to: (action.payload.to as string) || '',
             subject: fwdSubject,
-            body: action.payload.body || '',
+            body: fwdBody,
             threadId: selected?.threadId || undefined,
           });
         }

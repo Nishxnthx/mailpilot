@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { callOpenRouterApi, toolSchemas, OpenRouterMessage } from '@/lib/ai/openrouter';
 import { fetchMailList, fetchMailDetail } from '@/lib/gmail/service';
 import { resolveRecipientEmail } from '@/lib/gmail/recipient';
+import { formatForwardBody } from '@/lib/utils/utils';
 
 export const dynamic = 'force-dynamic';
 
@@ -98,7 +99,7 @@ CRITICAL UI CONTROL & SEARCH INSTRUCTIONS:
    - For forwarding, call "prepare_forward".
    - For sending emails, call "prepare_send" or "send_email".
 5. Security & Human Confirmation (CRITICAL MANDATE):
-   - Call "prepare_compose" whenever the user asks to "compose an email...", "prepare an email...", "draft an email...", "write an email to...", or "open composer". Calling "prepare_compose" opens the ComposeModal window with pre-filled fields (to, cc, bcc, subject, body) and stages an Action Preview Card for human confirmation.
+   - Call "prepare_compose" whenever the user asks to "compose an email...", "prepare an email...", "draft an email...", "write an email to...", or "open composer". Calling "prepare_compose", "prepare_reply", or "prepare_forward" automatically opens the Compose/Edit Draft Modal in the UI with pre-filled fields (to, cc, bcc, subject, body). NEVER tell the user to manually check or open their Drafts folder; the Compose Modal opens automatically in the UI for review.
    - NEVER claim an email has been directly sent without human confirmation. You cannot directly execute email sending without explicit user confirmation in the UI.
 6. Context Awareness:
    - Use the provided CURRENT WORKSPACE CONTEXT (active folder, selected email ID and details, search query, visible emails) to answer contextual requests like "reply to this" or "summarize this email".
@@ -355,12 +356,56 @@ CRITICAL UI CONTROL & SEARCH INSTRUCTIONS:
           }
         } else if (functionName === 'prepare_forward') {
           const targetEmailId = (rawArgs.emailId as string) || context?.selectedEmailId || context?.selectedEmail?.id;
-          const validArgs = toolSchemas.prepare_forward.parse({
-            ...rawArgs,
-            emailId: targetEmailId || undefined,
-          });
-          toolResultData = { status: 'staged_for_ui', draft: validArgs, emailId: targetEmailId };
-          uiActions.push({ type: 'prepare_forward', payload: { ...validArgs, emailId: targetEmailId } });
+          let fetchedEmail: any = null;
+          if (targetEmailId) {
+            try {
+              fetchedEmail = await fetchMailDetail(targetEmailId);
+            } catch {
+              // ignore fetch error gracefully
+            }
+          }
+
+          const rawTo = String(rawArgs.to || '');
+          let resolvedTo = rawTo;
+          let resolutionError: string | null = null;
+
+          if (rawTo && !rawTo.includes('@')) {
+            const resResult = await resolveRecipientEmail(rawTo);
+            if (resResult.resolvedEmail) {
+              resolvedTo = resResult.resolvedEmail;
+            } else if (resResult.candidateEmails.length > 1) {
+              resolutionError = `I found multiple email addresses for "${rawTo}": ${resResult.candidateEmails.join(', ')}. Please specify which email address you would like to use.`;
+            } else if (resResult.candidateEmails.length === 0) {
+              resolutionError = `I couldn't find an email address for "${rawTo}" in your Gmail account. Could you please specify their full email address?`;
+            }
+          }
+
+          if (resolutionError) {
+            finalReplyText = resolutionError;
+            toolResultData = { status: 'recipient_resolution_required', message: resolutionError };
+          } else {
+            const targetMsg = fetchedEmail || context?.selectedEmail;
+            const fwdSubject = (typeof rawArgs.subject === 'string' && rawArgs.subject) || (targetMsg ? (/^fwd:\s*/i.test(targetMsg.subject) ? targetMsg.subject : `Fwd: ${targetMsg.subject}`) : '');
+            let fwdBody = typeof rawArgs.body === 'string' ? rawArgs.body : '';
+            if (targetMsg) {
+              const formattedFwd = formatForwardBody(targetMsg);
+              if (!fwdBody) {
+                fwdBody = formattedFwd.trimStart();
+              } else if (!fwdBody.includes('Forwarded message')) {
+                fwdBody = `${fwdBody}\n\n${formattedFwd.trimStart()}`;
+              }
+            }
+
+            const validArgs = toolSchemas.prepare_forward.parse({
+              ...rawArgs,
+              emailId: targetEmailId || undefined,
+              to: resolvedTo || undefined,
+              subject: fwdSubject || undefined,
+              body: fwdBody || undefined,
+            });
+            toolResultData = { status: 'staged_for_ui', draft: validArgs, emailId: targetEmailId };
+            uiActions.push({ type: 'prepare_forward', payload: { ...validArgs, emailId: targetEmailId } });
+          }
         }
 
         // Append tool result message to conversation history for OpenRouter
