@@ -37,7 +37,7 @@ export async function processGmailHistory(
   console.log(`[Gmail History]: Fetching history from ${startHistoryId} to ${incomingHistoryId}...`);
 
   try {
-    const gmail = await getGmailClient();
+    const gmail = await getGmailClient(sessionId);
 
     const historyRes = await gmail.users.history.list({
       userId: 'me',

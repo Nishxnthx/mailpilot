@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { exchangeCodeForTokens } from '@/lib/gmail/oauth';
 import { setOAuthSession, verifyOAuthStateCookie } from '@/lib/gmail/session';
+import { ensureActiveGmailWatch } from '@/lib/gmail/watch';
 
 export const dynamic = 'force-dynamic';
 
@@ -47,6 +48,13 @@ export async function GET(request: NextRequest) {
     // Save tokens in server-side session store and attach opaque session ID HTTP-only cookie to response
     const sessionId = await setOAuthSession(tokens, response);
     console.log(`[OAuth Callback]: setOAuthSession completed with sessionId (${sessionId.substring(0, 8)}...). Redirecting to ${appUrl}?auth=success`);
+
+    // Auto-register Gmail users.watch() subscription with Google Cloud Pub/Sub
+    try {
+      await ensureActiveGmailWatch(sessionId);
+    } catch (watchErr) {
+      console.warn('[OAuth Callback Watch Auto-Start Error]:', watchErr);
+    }
 
     return response;
   } catch (error) {

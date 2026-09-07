@@ -1,5 +1,5 @@
 import { google, gmail_v1 } from 'googleapis';
-import { getOAuthSession } from './session';
+import { getOAuthSession, getOAuthSessionBySessionId } from './session';
 import { createOAuth2Client } from './oauth';
 import { Email, EmailFolder, EmailCategory, EmailAddress, EmailThread } from '@/types/email';
 
@@ -7,8 +7,8 @@ import { Email, EmailFolder, EmailCategory, EmailAddress, EmailThread } from '@/
  * Instantiates an authenticated googleapis Gmail v1 client for the current request's session.
  * Throws 'UNAUTHORIZED' if no active session exists.
  */
-export async function getGmailClient(): Promise<gmail_v1.Gmail> {
-  const tokens = await getOAuthSession();
+export async function getGmailClient(sessionId?: string): Promise<gmail_v1.Gmail> {
+  const tokens = sessionId ? getOAuthSessionBySessionId(sessionId) : await getOAuthSession();
   if (!tokens || !tokens.access_token) {
     throw new Error('UNAUTHORIZED');
   }

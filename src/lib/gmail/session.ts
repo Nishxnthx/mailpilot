@@ -122,6 +122,23 @@ export async function getOAuthSession(): Promise<OAuthTokens | null> {
 }
 
 /**
+ * Directly retrieves OAuth tokens by sessionId from memory/disk without reading cookies.
+ */
+export function getOAuthSessionBySessionId(sessionId: string): OAuthTokens | null {
+  if (!sessionId) return null;
+  let tokens = serverSessionStore.get(sessionId);
+  if (!tokens) {
+    const diskStore = readDiskStore();
+    tokens = diskStore[sessionId];
+    if (tokens && tokens.access_token) {
+      serverSessionStore.set(sessionId, tokens);
+    }
+  }
+  if (!tokens || !tokens.access_token) return null;
+  return tokens;
+}
+
+/**
  * Clears the server-side session store entry (memory + disk file) and deletes the session cookie.
  */
 export async function clearOAuthSession(response?: NextResponse): Promise<void> {

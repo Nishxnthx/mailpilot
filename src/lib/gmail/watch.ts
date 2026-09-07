@@ -81,6 +81,11 @@ export function clearStoredWatchData(sessionId: string): void {
  * Finds watch session by email address.
  */
 export function findSessionByEmail(emailAddress: string): GmailWatchData | null {
+  for (const data of watchStore.values()) {
+    if (data.emailAddress?.toLowerCase() === emailAddress.toLowerCase()) {
+      return data;
+    }
+  }
   const diskStore = readDiskWatchStore();
   for (const data of Object.values(diskStore)) {
     if (data.emailAddress?.toLowerCase() === emailAddress.toLowerCase()) {
@@ -100,7 +105,7 @@ export async function startGmailWatch(sessionId: string): Promise<GmailWatchData
     throw new Error('GMAIL_PUBSUB_TOPIC_NOT_CONFIGURED');
   }
 
-  const gmail = await getGmailClient();
+  const gmail = await getGmailClient(sessionId);
   const profileRes = await gmail.users.getProfile({ userId: 'me' });
   const emailAddress = profileRes.data.emailAddress || undefined;
 
@@ -139,6 +144,27 @@ export async function startGmailWatch(sessionId: string): Promise<GmailWatchData
 export async function renewGmailWatch(sessionId: string): Promise<GmailWatchData> {
   console.log(`[Gmail Watch]: Renewing watch subscription for session ${sessionId}...`);
   return startGmailWatch(sessionId);
+}
+
+/**
+ * Ensures an active Gmail watch subscription exists and is renewed if expired or near expiry (<24h left).
+ */
+export async function ensureActiveGmailWatch(sessionId: string): Promise<GmailWatchData | null> {
+  if (!process.env.GMAIL_PUBSUB_TOPIC) {
+    return null;
+  }
+
+  const existing = getStoredWatchData(sessionId);
+  const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+  if (!existing || existing.expiration - Date.now() < ONE_DAY_MS) {
+    try {
+      return await startGmailWatch(sessionId);
+    } catch (err) {
+      console.warn('[Gmail Watch Auto-Ensure Error]:', err);
+      return existing || null;
+    }
+  }
+  return existing;
 }
 
 /**

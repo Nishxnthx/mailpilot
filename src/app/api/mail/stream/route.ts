@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
 import { addSSEClient, removeSSEClient } from '@/lib/gmail/sse';
 import { getOAuthSession } from '@/lib/gmail/session';
+import { ensureActiveGmailWatch } from '@/lib/gmail/watch';
 
 export const dynamic = 'force-dynamic';
 
@@ -8,6 +10,14 @@ export async function GET() {
   const session = await getOAuthSession();
   if (!session) {
     return NextResponse.json({ error: 'UNAUTHORIZED' }, { status: 401 });
+  }
+
+  const cookieStore = await cookies();
+  const sessionId = cookieStore.get('gmail_session')?.value;
+  if (sessionId) {
+    ensureActiveGmailWatch(sessionId).catch((err) => {
+      console.warn('[SSE Stream Watch Ensure Error]:', err);
+    });
   }
 
   const clientId = crypto.randomUUID();
