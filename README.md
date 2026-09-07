@@ -8,6 +8,12 @@ Terms of Service: [https://mailpilot-production.onrender.com/terms](https://mail
 
 ---
 
+## 🎥 Live Demo Video
+
+[Watch the MailPilot Demo](https://drive.google.com/drive/folders/1j99ZpENsMC9hrID9iey94iZhNQ2A3OTj?usp=sharing)
+
+---
+
 ## 1. Project Overview
 
 MailPilot bridges modern generative AI capabilities with real-time email operations. Built as a single-page workspace with an intelligent AI sidebar, MailPilot translates natural language user intent into precise Gmail operations, instant UI filtering, thread viewing, and automated compose/reply preparation.
