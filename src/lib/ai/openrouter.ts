@@ -24,6 +24,8 @@ export const toolSchemas = {
   }),
   prepare_compose: z.object({
     to: z.string().optional().describe('Recipient email address'),
+    cc: z.string().optional().describe('CC recipient email address'),
+    bcc: z.string().optional().describe('BCC recipient email address'),
     subject: z.string().optional().describe('Email subject line'),
     body: z.string().optional().describe('Email body text'),
   }),
@@ -138,11 +140,13 @@ export const mailPilotOpenRouterTools = [
     type: 'function' as const,
     function: {
       name: 'prepare_compose',
-      description: 'Open the compose modal UI window for manually writing or editing a draft. Use this ONLY when the user explicitly asks to "open compose modal" or "open a new message window". DO NOT use this when the user asks to prepare, stage, or send an email.',
+      description: 'Open the compose modal UI window with populated draft fields (to, cc, bcc, subject, body) and stage an email for review.',
       parameters: {
         type: 'object',
         properties: {
           to: { type: 'string', description: 'Recipient email address' },
+          cc: { type: 'string', description: 'CC recipient email address' },
+          bcc: { type: 'string', description: 'BCC recipient email address' },
           subject: { type: 'string', description: 'Subject line' },
           body: { type: 'string', description: 'Email body text' },
         },

@@ -874,7 +874,7 @@ export const useMailStore = create<MailState>((set, get) => ({
       isComposeOpen: true,
       isTyping: false,
       composeDraft: initialData
-        ? { ...state.composeDraft, ...initialData }
+        ? { ...initialDraft, ...initialData }
         : state.composeDraft,
     }));
   },

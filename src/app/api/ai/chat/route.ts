@@ -92,15 +92,13 @@ CRITICAL UI CONTROL & SEARCH INSTRUCTIONS:
 4. UI Control Actions:
    - For switching folder views, call "navigate_mailbox".
    - For applying category/folder/query filters, call "filter_emails".
-   - For drafting new emails, call "prepare_compose".
+   - For drafting or composing new emails, call "prepare_compose".
    - For replying, call "prepare_reply".
    - For forwarding, call "prepare_forward".
    - For sending emails, call "prepare_send" or "send_email".
 5. Security & Human Confirmation (CRITICAL MANDATE):
-   - You MUST call "prepare_send" (or "send_email") whenever the user asks to "prepare an email...", "send an email...", "get an email ready to send...", "write and send an email to...", "stage an email...", or "draft an email to review before sending".
-   - Calling "prepare_send" creates an Action Preview Card in the Copilot panel for human confirmation. It DOES NOT open the ComposeModal window.
-   - Use "prepare_compose" ONLY when the user explicitly requests opening the compose window (e.g., "open composer modal", "open a new message window").
-   - NEVER claim an email has been directly sent without human confirmation. Calling "prepare_send" stages an Action Preview UI card for explicit human confirmation. You cannot directly execute email sending; the user must click the confirmation button in the UI.
+   - Call "prepare_compose" whenever the user asks to "compose an email...", "prepare an email...", "draft an email...", "write an email to...", or "open composer". Calling "prepare_compose" opens the ComposeModal window with pre-filled fields (to, cc, bcc, subject, body) and stages an Action Preview Card for human confirmation.
+   - NEVER claim an email has been directly sent without human confirmation. You cannot directly execute email sending without explicit user confirmation in the UI.
 6. Context Awareness:
    - Use the provided CURRENT WORKSPACE CONTEXT (active folder, selected email ID and details, search query, visible emails) to answer contextual requests like "reply to this" or "summarize this email".
 7. Be concise, professional, helpful, and clear in your final text response.`;
@@ -282,6 +280,13 @@ CRITICAL UI CONTROL & SEARCH INSTRUCTIONS:
         } else if (functionName === 'prepare_compose') {
           const validArgs = toolSchemas.prepare_compose.parse(rawArgs);
           toolResultData = { status: 'staged_for_ui', draft: validArgs };
+          actionPreview = {
+            to: validArgs.to || '',
+            cc: validArgs.cc || '',
+            bcc: validArgs.bcc || '',
+            subject: validArgs.subject || '',
+            body: validArgs.body || '',
+          };
           uiActions.push({ type: 'prepare_compose', payload: validArgs });
         } else if (functionName === 'prepare_reply') {
           const targetEmailId = rawArgs.emailId || context?.selectedEmailId;
@@ -304,6 +309,7 @@ CRITICAL UI CONTROL & SEARCH INSTRUCTIONS:
           const validArgs = toolSchemas.prepare_send.parse(rawArgs);
           toolResultData = { status: 'staged_for_action_preview', stagedSend: validArgs };
           actionPreview = validArgs;
+          uiActions.push({ type: 'prepare_compose', payload: validArgs });
           uiActions.push({ type: 'prepare_send', payload: validArgs });
         }
 
