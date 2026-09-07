@@ -380,9 +380,16 @@ export const CopilotPanelPlaceholder: React.FC = () => {
         })}
 
         {/* Global Active Action Preview */}
-        {stagedActionPreview && !displayMessages.some((m) => m.actionPreview === stagedActionPreview) && (
-          renderActionPreviewCard(stagedActionPreview)
-        )}
+        {stagedActionPreview &&
+          !displayMessages.some(
+            (m) =>
+              m.actionPreview &&
+              (m.actionPreview === stagedActionPreview ||
+                (m.actionPreview.to === stagedActionPreview.to &&
+                  m.actionPreview.subject === stagedActionPreview.subject &&
+                  m.actionPreview.body === stagedActionPreview.body))
+          ) &&
+          renderActionPreviewCard(stagedActionPreview)}
 
         {/* Loading Indicator inside chat stream */}
         {(status === 'thinking' || status === 'executing') && (

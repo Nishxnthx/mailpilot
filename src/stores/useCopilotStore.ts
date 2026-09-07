@@ -99,10 +99,11 @@ export const useCopilotStore = create<CopilotStoreState>((set, get) => ({
     };
 
     set((state) => ({
-      messages: [...state.messages, userMessage],
+      messages: [...state.messages.map((m) => (m.actionPreview ? { ...m, actionPreview: null } : m)), userMessage],
       promptInput: '',
       status: 'thinking',
       error: null,
+      stagedActionPreview: null,
     }));
 
     try {
@@ -250,6 +251,7 @@ export const useCopilotStore = create<CopilotStoreState>((set, get) => ({
   },
 
   confirmSendEmail: async (actionData: StagedSendAction) => {
+    if (get().status === 'executing') return;
     set({ status: 'executing' });
     try {
       const res = await fetch('/api/mail/send', {

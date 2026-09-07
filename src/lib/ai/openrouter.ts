@@ -141,7 +141,7 @@ export const mailPilotOpenRouterTools = [
     type: 'function' as const,
     function: {
       name: 'prepare_compose',
-      description: 'Open the compose modal UI window with populated draft fields (to, cc, bcc, subject, body) and stage an email for review.',
+      description: 'Open the compose modal UI window with populated draft fields (to, cc, bcc, subject, body) and stage an email for review. Call this tool ONCE. Do NOT call another staging tool in the same turn.',
       parameters: {
         type: 'object',
         properties: {
@@ -158,7 +158,7 @@ export const mailPilotOpenRouterTools = [
     type: 'function' as const,
     function: {
       name: 'prepare_reply',
-      description: 'Open reply composer for an email with generated response content.',
+      description: 'Open reply composer for an email with generated response content. Call this tool ONCE. Do NOT call another staging tool in the same turn.',
       parameters: {
         type: 'object',
         properties: {
@@ -174,7 +174,7 @@ export const mailPilotOpenRouterTools = [
     type: 'function' as const,
     function: {
       name: 'prepare_forward',
-      description: 'Open forward composer for an email with target recipient, subject, and body text.',
+      description: 'Open forward composer for an email with target recipient, subject, and body text. Call this tool ONCE. Do NOT call another staging tool in the same turn.',
       parameters: {
         type: 'object',
         properties: {
@@ -203,7 +203,7 @@ export const mailPilotOpenRouterTools = [
     type: 'function' as const,
     function: {
       name: 'prepare_send',
-      description: 'Stage an email for sending by creating an Action Preview UI card for explicit human confirmation before sending. MANDATORY for ANY prompt asking to "Prepare an email to...", "Send an email to...", "Get an email ready to send...", "Stage an email...", or "Draft an email to review before sending". Creates an Action Preview Card in Copilot panel without opening ComposeModal window.',
+      description: 'Stage an email for sending by creating an Action Preview UI card for explicit human confirmation before sending. MANDATORY for ANY prompt asking to "Prepare an email to...", "Send an email to...", "Get an email ready to send...", "Stage an email...", or "Draft an email to review before sending". Creates an Action Preview Card in Copilot panel without opening ComposeModal window. Call this tool ONCE. Do NOT call another staging tool in the same turn.',
       parameters: {
         type: 'object',
         properties: {
@@ -221,7 +221,7 @@ export const mailPilotOpenRouterTools = [
     type: 'function' as const,
     function: {
       name: 'send_email',
-      description: 'Stage an email for sending by creating an Action Preview UI card for explicit human confirmation before sending. MANDATORY for ANY prompt asking to "Prepare an email to...", "Send an email to...", "Get an email ready to send...", "Stage an email...", or "Draft an email to review before sending". Creates an Action Preview Card in Copilot panel without opening ComposeModal window.',
+      description: 'Stage an email for sending by creating an Action Preview UI card for explicit human confirmation before sending. Call this tool ONCE. Do NOT call another staging tool in the same turn.',
       parameters: {
         type: 'object',
         properties: {

@@ -3,6 +3,7 @@
 import React from 'react';
 import { X, Send, Bot, Sparkles, Loader2 } from 'lucide-react';
 import { useMailStore, clearMailboxCache } from '@/stores/useMailStore';
+import { useCopilotStore } from '@/stores/useCopilotStore';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 
@@ -141,6 +142,7 @@ export const ComposeModal: React.FC = () => {
 
       resetComposeDraft();
       closeCompose();
+      useCopilotStore.getState().cancelActionPreview();
 
       if (sentThreadId) {
         await useMailStore.getState().fetchEmailThread(sentThreadId);

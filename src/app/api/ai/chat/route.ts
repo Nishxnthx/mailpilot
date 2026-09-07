@@ -303,7 +303,7 @@ CRITICAL UI CONTROL & SEARCH INSTRUCTIONS:
               ...rawArgs,
               to: resolvedTo,
             });
-            toolResultData = { status: 'staged_for_ui', draft: validArgs };
+            toolResultData = { status: 'staged_for_ui', message: 'Action staged in UI. Do NOT call another staging tool.', draft: validArgs };
             actionPreview = {
               to: validArgs.to || '',
               cc: validArgs.cc || '',
@@ -351,7 +351,7 @@ CRITICAL UI CONTROL & SEARCH INSTRUCTIONS:
               emailId: targetEmailId || undefined,
               to: resolvedTo,
             });
-            toolResultData = { status: 'staged_for_ui', draft: validArgs, emailId: targetEmailId };
+            toolResultData = { status: 'staged_for_ui', message: 'Action staged in UI. Do NOT call another staging tool.', draft: validArgs, emailId: targetEmailId };
             uiActions.push({ type: 'prepare_reply', payload: { ...validArgs, emailId: targetEmailId } });
           }
         } else if (functionName === 'prepare_forward') {
@@ -403,7 +403,7 @@ CRITICAL UI CONTROL & SEARCH INSTRUCTIONS:
               subject: fwdSubject || undefined,
               body: fwdBody || undefined,
             });
-            toolResultData = { status: 'staged_for_ui', draft: validArgs, emailId: targetEmailId };
+            toolResultData = { status: 'staged_for_ui', message: 'Action staged in UI. Do NOT call another staging tool.', draft: validArgs, emailId: targetEmailId };
             uiActions.push({ type: 'prepare_forward', payload: { ...validArgs, emailId: targetEmailId } });
           }
         }
