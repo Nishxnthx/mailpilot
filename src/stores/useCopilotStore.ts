@@ -66,7 +66,11 @@ export const useCopilotStore = create<CopilotStoreState>((set, get) => ({
   setStatus: (status) => set({ status }),
   setStagedActionPreview: (action) => set({ stagedActionPreview: action }),
 
-  cancelActionPreview: () => set({ stagedActionPreview: null }),
+  cancelActionPreview: () =>
+    set((state) => ({
+      stagedActionPreview: null,
+      messages: state.messages.map((m) => (m.actionPreview ? { ...m, actionPreview: null } : m)),
+    })),
 
   clearMessages: () =>
     set({
@@ -238,7 +242,7 @@ export const useCopilotStore = create<CopilotStoreState>((set, get) => ({
         stagedActionPreview: null,
         status: 'idle',
         messages: [
-          ...state.messages,
+          ...state.messages.map((m) => (m.actionPreview ? { ...m, actionPreview: null } : m)),
           {
             id: crypto.randomUUID(),
             role: 'assistant',

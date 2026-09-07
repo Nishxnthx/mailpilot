@@ -47,7 +47,18 @@ describe('AI Email Send Safety & Confirmation System', () => {
       body: 'I will send the report tomorrow.',
     };
 
-    useCopilotStore.setState({ stagedActionPreview: stagedAction });
+    useCopilotStore.setState({
+      stagedActionPreview: stagedAction,
+      messages: [
+        {
+          id: 'msg-1',
+          role: 'assistant',
+          content: 'I have prepared your email.',
+          actionPreview: stagedAction,
+          timestamp: new Date().toISOString(),
+        },
+      ],
+    });
 
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
@@ -61,5 +72,7 @@ describe('AI Email Send Safety & Confirmation System', () => {
     // Explicit confirmation posts to /api/mail/send
     expect(fetchMock.mock.calls[0][0]).toBe('/api/mail/send');
     expect(useCopilotStore.getState().stagedActionPreview).toBeNull();
+    const updatedMsgs = useCopilotStore.getState().messages;
+    expect(updatedMsgs.every((m) => m.actionPreview === null || m.actionPreview === undefined)).toBe(true);
   });
 });
