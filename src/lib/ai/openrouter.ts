@@ -275,7 +275,7 @@ export async function callOpenRouterApi(messages: OpenRouterMessage[]) {
       messages,
       tools: mailPilotOpenRouterTools,
       tool_choice: 'auto',
-      max_tokens: 4096,
+      max_tokens: 2048,
     }),
   });
 
