@@ -315,6 +315,52 @@ CRITICAL UI CONTROL & SEARCH INSTRUCTIONS:
               uiActions.push({ type: 'prepare_send', payload: validArgs });
             }
           }
+        } else if (functionName === 'prepare_reply') {
+          const targetEmailId = (rawArgs.emailId as string) || context?.selectedEmailId || context?.selectedEmail?.id;
+          let fetchedEmail: any = null;
+          if (targetEmailId) {
+            try {
+              fetchedEmail = await fetchMailDetail(targetEmailId);
+            } catch {
+              // ignore fetch error gracefully
+            }
+          }
+
+          const rawTo = String(rawArgs.to || fetchedEmail?.from?.email || context?.selectedEmail?.from?.email || '');
+          let resolvedTo = rawTo;
+          let resolutionError: string | null = null;
+
+          if (rawTo && !rawTo.includes('@')) {
+            const resResult = await resolveRecipientEmail(rawTo);
+            if (resResult.resolvedEmail) {
+              resolvedTo = resResult.resolvedEmail;
+            } else if (resResult.candidateEmails.length > 1) {
+              resolutionError = `I found multiple email addresses for "${rawTo}": ${resResult.candidateEmails.join(', ')}. Please specify which email address you would like to use.`;
+            } else if (resResult.candidateEmails.length === 0) {
+              resolutionError = `I couldn't find an email address for "${rawTo}" in your Gmail account. Could you please specify their full email address?`;
+            }
+          }
+
+          if (resolutionError) {
+            finalReplyText = resolutionError;
+            toolResultData = { status: 'recipient_resolution_required', message: resolutionError };
+          } else {
+            const validArgs = toolSchemas.prepare_reply.parse({
+              ...rawArgs,
+              emailId: targetEmailId || undefined,
+              to: resolvedTo,
+            });
+            toolResultData = { status: 'staged_for_ui', draft: validArgs, emailId: targetEmailId };
+            uiActions.push({ type: 'prepare_reply', payload: { ...validArgs, emailId: targetEmailId } });
+          }
+        } else if (functionName === 'prepare_forward') {
+          const targetEmailId = (rawArgs.emailId as string) || context?.selectedEmailId || context?.selectedEmail?.id;
+          const validArgs = toolSchemas.prepare_forward.parse({
+            ...rawArgs,
+            emailId: targetEmailId || undefined,
+          });
+          toolResultData = { status: 'staged_for_ui', draft: validArgs, emailId: targetEmailId };
+          uiActions.push({ type: 'prepare_forward', payload: { ...validArgs, emailId: targetEmailId } });
         }
 
         // Append tool result message to conversation history for OpenRouter

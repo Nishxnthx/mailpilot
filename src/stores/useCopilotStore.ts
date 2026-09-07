@@ -165,20 +165,38 @@ export const useCopilotStore = create<CopilotStoreState>((set, get) => ({
             body: action.payload.body || '',
           });
         } else if (action.type === 'prepare_reply') {
-          const selected = mailState.selectedEmail;
+          const targetEmailId = action.payload.emailId || mailState.selectedEmailId;
+          if (targetEmailId) {
+            mailState.setSelectedEmailId(targetEmailId);
+            if (!mailState.selectedEmail || mailState.selectedEmail.id !== targetEmailId) {
+              await mailState.fetchEmailDetail(targetEmailId);
+            }
+          }
+          const selected = useMailStore.getState().selectedEmail;
+          const replySubject = action.payload.subject || (selected ? (/^re:\s*/i.test(selected.subject) ? selected.subject : `Re: ${selected.subject}`) : '');
           await mailState.animateComposeFill({
             to: action.payload.to || selected?.from.email || '',
-            subject: action.payload.subject || (selected ? `Re: ${selected.subject}` : ''),
+            subject: replySubject,
             body: action.payload.body || '',
             threadId: action.payload.threadId || selected?.threadId || undefined,
             inReplyTo: action.payload.inReplyTo || selected?.messageId || selected?.id || undefined,
             references: action.payload.references || selected?.messageId || selected?.id || undefined,
           });
         } else if (action.type === 'prepare_forward') {
+          const targetEmailId = action.payload.emailId || mailState.selectedEmailId;
+          if (targetEmailId) {
+            mailState.setSelectedEmailId(targetEmailId);
+            if (!mailState.selectedEmail || mailState.selectedEmail.id !== targetEmailId) {
+              await mailState.fetchEmailDetail(targetEmailId);
+            }
+          }
+          const selected = useMailStore.getState().selectedEmail;
+          const fwdSubject = action.payload.subject || (selected ? (/^fwd:\s*/i.test(selected.subject) ? selected.subject : `Fwd: ${selected.subject}`) : '');
           await mailState.animateComposeFill({
             to: action.payload.to || '',
-            subject: action.payload.subject || (mailState.selectedEmail ? `Fwd: ${mailState.selectedEmail.subject}` : ''),
+            subject: fwdSubject,
             body: action.payload.body || '',
+            threadId: selected?.threadId || undefined,
           });
         }
       }
