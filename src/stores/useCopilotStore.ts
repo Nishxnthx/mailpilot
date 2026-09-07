@@ -153,7 +153,7 @@ export const useCopilotStore = create<CopilotStoreState>((set, get) => ({
         } else if (action.type === 'open_email') {
           mailState.setSelectedEmailId(action.payload.emailId);
         } else if (action.type === 'prepare_compose') {
-          mailState.openCompose({
+          await mailState.animateComposeFill({
             to: action.payload.to || '',
             cc: action.payload.cc || '',
             bcc: action.payload.bcc || '',
