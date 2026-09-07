@@ -129,7 +129,7 @@ export async function fetchMailList(options: {
 }): Promise<FetchMailListResult> {
   const gmail = await getGmailClient();
 
-  const { folder = 'inbox', category = 'all', query = '', pageToken, maxResults = 50 } = options;
+  const { folder, category = 'all', query = '', pageToken, maxResults = 50 } = options;
 
   let labelIds: string[] | undefined = undefined;
   let q: string | undefined = undefined;
@@ -138,7 +138,10 @@ export async function fetchMailList(options: {
   const trimmedQuery = query.trim();
 
   // Accurate folder-to-Gmail API mapping
-  if (folder === 'drafts') {
+  if (folder === undefined) {
+    labelIds = undefined;
+    q = trimmedQuery || undefined;
+  } else if (folder === 'drafts') {
     const listRes = await gmail.users.drafts.list({
       userId: 'me',
       q: trimmedQuery || undefined,

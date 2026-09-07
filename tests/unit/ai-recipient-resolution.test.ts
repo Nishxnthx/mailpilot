@@ -7,7 +7,7 @@ describe('AI Recipient Display Name Resolution', () => {
     vi.restoreAllMocks();
   });
 
-  it('returns explicit email address directly without querying Gmail', async () => {
+  it('exact email address -> remains supported directly without querying Gmail', async () => {
     const fetchSpy = vi.spyOn(service, 'fetchMailList');
     const result = await resolveRecipientEmail('john.doe@example.com');
 
@@ -15,15 +15,15 @@ describe('AI Recipient Display Name Resolution', () => {
     expect(fetchSpy).not.toHaveBeenCalled();
   });
 
-  it('resolves display name to email address when exactly one confident match is found in Gmail', async () => {
+  it('partial name -> one matching email -> resolves automatically from Gmail header data', async () => {
     vi.spyOn(service, 'fetchMailList').mockResolvedValue({
       emails: [
         {
           id: 'm-1',
           threadId: 't-1',
-          snippet: 'Hello',
-          subject: 'Test',
-          from: { name: 'Nishanth Sivakumar', email: 'nishanthsivakumarsto@gmail.com' },
+          snippet: 'Testing message',
+          subject: 'Report',
+          from: { name: 'Kaviyanagaraj', email: 'kaviyanagaraj75@gmail.com' },
           to: [{ email: 'me@example.com' }],
           date: '2026-09-07',
           internalDate: 12345,
@@ -36,18 +36,45 @@ describe('AI Recipient Display Name Resolution', () => {
       resultSizeEstimate: 1,
     });
 
-    const result = await resolveRecipientEmail('Nishanth Sivakumar');
+    const result = await resolveRecipientEmail('kaviyanagaraj');
 
-    expect(result.resolvedEmail).toBe('nishanthsivakumarsto@gmail.com');
-    expect(result.candidateEmails).toEqual(['nishanthsivakumarsto@gmail.com']);
+    expect(result.resolvedEmail).toBe('kaviyanagaraj75@gmail.com');
+    expect(result.candidateEmails).toEqual(['kaviyanagaraj75@gmail.com']);
   });
 
-  it('returns multiple candidate emails when multiple distinct email matches are found', async () => {
+  it('case-insensitive name matching -> resolves uppercase/mixed-case inputs correctly', async () => {
     vi.spyOn(service, 'fetchMailList').mockResolvedValue({
       emails: [
         {
-          id: 'm-1',
-          threadId: 't-1',
+          id: 'm-2',
+          threadId: 't-2',
+          snippet: 'Hello',
+          subject: 'Greetings',
+          from: { name: 'KAVIYA NAGARAJ', email: 'kaviya.nagaraj@gmail.com' },
+          to: [],
+          date: '2026-09-07',
+          internalDate: 12346,
+          isRead: true,
+          isStarred: false,
+          folder: 'inbox',
+          labels: ['INBOX'],
+        },
+      ],
+      resultSizeEstimate: 1,
+    });
+
+    const result = await resolveRecipientEmail('kaviya nagaraj');
+
+    expect(result.resolvedEmail).toBe('kaviya.nagaraj@gmail.com');
+    expect(result.candidateEmails).toEqual(['kaviya.nagaraj@gmail.com']);
+  });
+
+  it('multiple matching emails -> returns candidates without guessing so AI can ask for clarification', async () => {
+    vi.spyOn(service, 'fetchMailList').mockResolvedValue({
+      emails: [
+        {
+          id: 'm-3',
+          threadId: 't-3',
           snippet: 'Hi',
           subject: 'Test 1',
           from: { name: 'John Doe', email: 'john.doe@example.com' },
@@ -60,8 +87,8 @@ describe('AI Recipient Display Name Resolution', () => {
           labels: ['INBOX'],
         },
         {
-          id: 'm-2',
-          threadId: 't-2',
+          id: 'm-4',
+          threadId: 't-4',
           snippet: 'Hi 2',
           subject: 'Test 2',
           from: { name: 'John Smith', email: 'john.smith@example.com' },
@@ -84,7 +111,7 @@ describe('AI Recipient Display Name Resolution', () => {
     expect(result.candidateEmails).toContain('john.smith@example.com');
   });
 
-  it('returns empty candidate list when no matching emails are found in Gmail', async () => {
+  it('no matching email -> returns empty candidates so AI asks for full email address', async () => {
     vi.spyOn(service, 'fetchMailList').mockResolvedValue({
       emails: [],
       resultSizeEstimate: 0,

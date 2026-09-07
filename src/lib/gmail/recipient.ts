@@ -1,43 +1,83 @@
 import { fetchMailList } from './service';
 
+export interface RecipientResolutionResult {
+  resolvedEmail?: string;
+  candidateEmails: string[];
+}
+
 /**
  * Resolves a recipient input string (display name or email address) to a single verified email address.
- * If input is a display name without '@', queries Gmail for matching contacts/emails.
+ * Queries Gmail API headers (From, To, Cc, Reply-To) across all messages when given a name or partial name.
  */
-export async function resolveRecipientEmail(inputTo: string): Promise<{ resolvedEmail?: string; candidateEmails: string[] }> {
+export async function resolveRecipientEmail(inputTo: string): Promise<RecipientResolutionResult> {
   const trimmed = inputTo.trim();
   if (!trimmed) return { candidateEmails: [] };
 
-  // If input already contains a valid email address
+  // 1. If input already contains a valid email address (e.g., "john@example.com" or "John <john@example.com>")
   const emailRegex = /([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/;
   const match = trimmed.match(emailRegex);
   if (match) {
     return { resolvedEmail: match[1], candidateEmails: [match[1]] };
   }
 
-  // Input is a display name (e.g. "Nishanth Sivakumar" or "Nishanth")
+  // 2. Input is a display name or partial name (e.g., "kaviyanagaraj", "Kaviyanagaraj", "Nishanth Sivakumar")
   try {
-    const searchRes = await fetchMailList({ query: trimmed });
+    // Execute global search across all messages without folder restriction
+    const searchRes = await fetchMailList({ query: trimmed, folder: undefined, maxResults: 50 });
     const candidates = new Set<string>();
     const lowerInput = trimmed.toLowerCase();
+    const inputTokens = lowerInput.split(/\s+/).filter(Boolean);
 
     for (const email of searchRes.emails) {
-      if (email.from?.email && email.from.email.includes('@')) {
-        const fromName = (email.from.name || '').toLowerCase();
-        const fromEmail = email.from.email.toLowerCase();
-        if (fromName.includes(lowerInput) || fromEmail.includes(lowerInput)) {
-          candidates.add(email.from.email);
-        }
+      const headerAddresses: Array<{ name?: string; email: string }> = [];
+
+      // Check From
+      if (email.from?.email) {
+        headerAddresses.push({ name: email.from.name, email: email.from.email });
       }
+
+      // Check To
       if (Array.isArray(email.to)) {
         for (const recipient of email.to) {
-          if (recipient.email && recipient.email.includes('@')) {
-            const toName = (recipient.name || '').toLowerCase();
-            const toEmail = recipient.email.toLowerCase();
-            if (toName.includes(lowerInput) || toEmail.includes(lowerInput)) {
-              candidates.add(recipient.email);
-            }
+          if (recipient.email) {
+            headerAddresses.push({ name: recipient.name, email: recipient.email });
           }
+        }
+      }
+
+      // Check Cc
+      if (Array.isArray(email.cc)) {
+        for (const recipient of email.cc) {
+          if (recipient.email) {
+            headerAddresses.push({ name: recipient.name, email: recipient.email });
+          }
+        }
+      }
+
+      // Check Bcc if present
+      if (Array.isArray(email.bcc)) {
+        for (const recipient of email.bcc) {
+          if (recipient.email) {
+            headerAddresses.push({ name: recipient.name, email: recipient.email });
+          }
+        }
+      }
+
+      // Evaluate each extracted address
+      for (const addr of headerAddresses) {
+        if (!addr.email || !addr.email.includes('@')) continue;
+
+        const nameLower = (addr.name || '').toLowerCase();
+        const emailLower = addr.email.toLowerCase();
+
+        // Case-insensitive & partial substring matching:
+        const matchesFull = nameLower.includes(lowerInput) || emailLower.includes(lowerInput);
+        const matchesTokens =
+          inputTokens.length > 0 &&
+          inputTokens.every((token) => nameLower.includes(token) || emailLower.includes(token));
+
+        if (matchesFull || matchesTokens) {
+          candidates.add(addr.email);
         }
       }
     }
@@ -47,7 +87,8 @@ export async function resolveRecipientEmail(inputTo: string): Promise<{ resolved
       return { resolvedEmail: candidateList[0], candidateEmails: candidateList };
     }
     return { candidateEmails: candidateList };
-  } catch {
+  } catch (err) {
+    console.error('[Recipient Resolution Error]:', err);
     return { candidateEmails: [] };
   }
 }
